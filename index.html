@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Usage Indicator Concept</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-synthesis: none;
+      --page: #121314;
+      --app: #181818;
+      --rail: #141414;
+      --panel: #2b2c2b;
+      --border: #3c3e3c;
+      --muted: #a6aba7;
+      --text: #f5f6f4;
+      --avatar-size: 24px;
+      --green: #b5e7c3;
+      --blue: #98c5ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--page); color: var(--text); }
+    button, select, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    button:disabled { cursor: not-allowed; }
+    [hidden] { display: none !important; }
+
+    .page { max-width: 1500px; margin: 0 auto; padding: 24px 28px 28px; }
+    .heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    .sample-tag { padding: 5px 9px; border: 1px solid #3e5144; border-radius: 5px; color: #c5e8cd; background: #203026; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .demo-controls { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 13px 16px; border: 1px solid #393b39; border-bottom: 0; background: #242624; border-radius: 8px 8px 0 0; }
+    .control { display: flex; align-items: center; gap: 10px; min-width: 0; color: #e2e6e2; font-size: 12px; }
+    .control label { white-space: nowrap; }
+    .control input[type="range"] { width: 150px; margin: 0; accent-color: #a8dcb7; cursor: pointer; }
+    .control output { min-width: 36px; color: #dcefe0; font-variant-numeric: tabular-nums; }
+    .control select { max-width: 190px; min-height: 30px; padding: 4px 26px 4px 9px; border: 1px solid #515451; border-radius: 5px; color: var(--text); background: #303230; font-size: 12px; }
+    .demo-note { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+    .app-viewport { position: relative; width: 100%; aspect-ratio: 1280 / 1392; overflow: hidden; }
+    .app { position: absolute; top: 0; left: 0; display: flex; flex-direction: column; width: 1280px; height: 1392px; transform: scale(var(--preview-scale, .6)); transform-origin: top left; overflow: hidden; border: 1px solid #393b39; border-radius: 0 0 8px 8px; background: var(--rail); }
+    .titlebar { flex: 0 0 clamp(25px, 3.017%, 42px); display: flex; align-items: center; gap: 18px; padding: 0 15px; background: #141414; color: #aaaead; font-size: 12px; }
+    .titlebar .title-actions { display: flex; align-items: center; gap: 16px; }
+    .titlebar svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .titlebar .window-controls { display: flex; gap: 18px; margin-left: auto; color: #bfc1bf; font-size: 13px; }
+    .work-area { --rail-size: clamp(32px, 3.984%, 51px); position: relative; display: flex; flex: 1; min-height: 0; }
+    .rail { z-index: 2; flex: 0 0 var(--rail-size); display: flex; flex-direction: column; align-items: center; padding: 10px 0 14px; background: var(--rail); }
+    .rail-top, .rail-bottom { display: flex; width: 100%; flex-direction: column; align-items: center; gap: 7px; }
+    .rail-bottom { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 14px; margin-top: auto; }
+    .nav-symbol { width: min(35px, 100%); height: 35px; display: grid; place-items: center; color: #aeb2ae; }
+    .nav-symbol.active { color: #f5f6f4; background: #343634; border-radius: 7px; }
+    .nav-symbol svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+    .usage-trigger { width: min(46px, 100%); height: 42px; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
+    .usage-trigger:not([data-mode="number"]):hover, .usage-trigger:not([data-mode="number"])[aria-expanded="true"] { background: #373a37; }
+    .ring { --amount: 84%; position: relative; width: 26px; height: 26px; display: block; border-radius: 50%; background: conic-gradient(from 0deg, #d3d3d3 0 var(--amount), #545454 var(--amount) 100%); }
+    .ring::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: #373a37; }
+    .usage-trigger:not(:hover):not([aria-expanded="true"]) .ring::before { background: var(--rail); }
+    .ring::after { content: ""; position: absolute; width: 7px; height: 7px; left: 9.5px; top: 9.5px; transform: rotate(45deg); border-radius: 1px; background: #8b918b; }
+    .number-display { display: block; width: var(--avatar-size); justify-self: center; font-size: 9px; font-weight: 400; line-height: 1; text-align: center; white-space: nowrap; color: #f4f8f4; }
+    .avatar { display: grid; width: var(--avatar-size); height: var(--avatar-size); justify-self: center; place-items: center; border-radius: 50%; background: #21bd9d; color: #f5fff8; font-size: 9px; font-weight: 600; }
+    .app-panel { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; border-radius: 14px 14px 0 0; background: #171717; }
+    .project-sidebar { flex: 0 0 23.515%; min-width: 0; overflow: hidden; padding: 14px 12px; border-right: 1px solid #272727; background: #171717; font-size: 12px; }
+    .project-header { display: flex; align-items: center; gap: 8px; color: #e3e3e3; font-size: 15px; font-weight: 600; }
+    .project-header .project-tools { display: flex; gap: 12px; margin-left: auto; color: #8f8f8f; }
+    .project-sidebar svg { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .project-line { display: flex; align-items: center; gap: 9px; min-height: 30px; color: #e1e1e1; white-space: nowrap; }
+    .project-line span, .task-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .project-label { margin: 17px 0 7px; color: #898989; font-weight: 600; }
+    .project-blue { color: #50a6eb; }
+    .project-red { color: #ed7272; }
+    .project-purple { color: #b38ee8; }
+    .task-line { padding: 6px 0 6px 24px; color: #c7c7c7; }
+    .recents { margin-top: 18px; color: #898989; }
+    .workspace { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--app); }
+    .workspace-header { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 22px; color: #e2e4e1; font-size: 13px; font-weight: 600; }
+    .workspace-header svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    .workspace-header .more { margin-left: auto; color: #929292; }
+    .conversation { flex: 1; width: min(570px, calc(100% - 48px)); margin: 45px auto 0; color: #e3e3e3; font-size: 13px; line-height: 1.5; }
+    .sample-message { width: fit-content; max-width: 85%; margin-left: auto; padding: 10px 14px; border-radius: 14px; background: #303030; }
+    .sample-response { margin-top: 30px; }
+    .composer { position: absolute; bottom: 27px; left: 50%; transform: translateX(-50%); width: min(610px, calc(100% - 48px)); min-height: 50px; display: flex; align-items: center; gap: 12px; padding: 0 15px; border: 1px solid #454845; border-radius: 14px; background: #2a2c2a; color: #9ea29e; font-size: 13px; }
+    .composer .send { margin-left: auto; width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; background: #747a74; color: #242624; }
+
+    .usage-menu { position: absolute; z-index: 4; left: calc(var(--rail-size) - 2px); bottom: 52px; width: 260px; max-width: calc(100% - var(--rail-size) - 14px); padding: 15px 14px 11px; border: 1px solid #3e403e; border-radius: 14px; background: var(--panel); box-shadow: 0 18px 45px #0006; font-size: 13px; }
+    .source { padding: 0 0 12px; border-bottom: 1px solid #434543; color: #aeb2ae; }
+    .source strong { color: #d9ddda; font-weight: 500; }
+    .stat { display: flex; justify-content: space-between; gap: 12px; padding-top: 13px; color: #f3f5f2; }
+    .stat span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+    .reset-heading, .display-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+    .reset-heading { flex-wrap: wrap; }
+    .reset-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    #reset-balance { color: #e2e5e2; font-size: 13px; text-align: right; white-space: nowrap; }
+    .reset-action { min-height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 3px 10px; border: 1px solid #666a66; border-radius: 6px; background: #3a3d3a; color: #f2f4f2; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .reset-action:hover { background: #4a4e4a; }
+    .reset-action:disabled { border-color: #484b48; background: #333533; color: #858a85; }
+    .display-heading { color: #dfe2df; }
+    .segmented { display: flex; padding: 3px; border: 1px solid #4c4f4c; border-radius: 6px; background: #222422; }
+    .segmented button { width: 32px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #b9bdb9; font-size: 14px; cursor: pointer; }
+    .segmented button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    .segmented button[aria-pressed="true"] { background: #505550; color: #fff; }
+    .manage { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 18px 0 0; border: 0; background: transparent; color: #e7e9e7; text-align: left; cursor: pointer; }
+    .manage svg { width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: #c3c8c3; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .inline-result { margin-top: 10px; padding: 8px; border: 1px solid #4f7058; border-radius: 5px; background: #304437; color: #d5f2dc; font-size: 11px; }
+    .confirm-title { margin: 15px 0 7px; font-size: 15px; font-weight: 600; }
+    .confirm-copy { margin: 0; color: #c4c9c4; font-size: 12px; line-height: 1.5; }
+    .confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    .confirm-buttons button { min-height: 32px; padding: 5px 11px; border: 1px solid #555955; border-radius: 6px; background: transparent; cursor: pointer; }
+    .confirm-buttons .confirm { border-color: #bddfc6; background: #c6e7ce; color: #193020; font-weight: 600; }
+    .confirm-buttons button:disabled { opacity: .6; }
+    .footnote { display: flex; justify-content: space-between; gap: 14px; padding-top: 12px; color: #9ba19c; font-size: 11px; }
+    @media (max-width: 640px) {
+      .page { padding: 16px 10px 20px; }
+      .heading { margin-bottom: 14px; }
+      .heading h1 { font-size: 17px; }
+      .demo-controls { gap: 12px 18px; }
+      .control:first-child { width: 100%; }
+      .control input[type="range"] { flex: 1; width: auto; min-width: 55px; }
+      .demo-note { margin-left: 0; }
+      .footnote { flex-wrap: wrap; }
+    }
+    @media (max-width: 510px) { .app-viewport { aspect-ratio: auto; } .app { position: relative; width: 100%; height: auto; transform: none; } .titlebar { flex-basis: 38px; gap: 11px; } .work-area { --rail-size: 52px; flex: none; height: 560px; } .project-sidebar { display: none; } .titlebar .title-actions { gap: 10px; } .conversation { width: calc(100% - 32px); } .usage-menu { padding-inline: 12px; } }
+    @media (max-width: 380px) { .title-label-extra { display: none; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="heading">
+      <h1>Usage indicator</h1>
+      <span class="sample-tag">Interactive concept</span>
+    </header>
+
+    <section class="demo-controls" aria-label="Example data controls">
+      <div class="control">
+        <label for="remaining">Weekly remaining</label>
+        <input id="remaining" type="range" min="0" max="100" value="84">
+        <output id="remaining-output" for="remaining">84%</output>
+      </div>
+      <div class="control">
+        <label for="availability">Example resets</label>
+        <select id="availability">
+          <option value="available">1 available</option>
+          <option value="none">None available</option>
+          <option value="ineligible">No eligible limit</option>
+          <option value="unknown">Unavailable</option>
+        </select>
+      </div>
+      <span class="demo-note">Sample data only</span>
+    </section>
+
+    <div class="app-viewport">
+    <section class="app" aria-label="Example desktop app">
+      <div class="titlebar" aria-hidden="true"><span class="title-actions"><svg viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M5 12h14"/></svg><svg viewBox="0 0 24 24"><path d="m12 5 7 7-7 7M19 12H5"/></svg><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span><span>File</span><span>Edit</span><span>View</span><span class="title-label-extra">Help</span><span class="window-controls"><span>−</span><span>□</span><span>×</span></span></div>
+      <div class="work-area">
+        <aside class="rail" aria-label="Example sidebar">
+          <div class="rail-top" aria-hidden="true">
+            <span class="nav-symbol active"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-7h6v7"/></svg></span>
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="14" height="16" rx="2"/><path d="M4 7H3v13a1 1 0 0 0 1 1h12v-1"/></svg></span>
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/></svg></span>
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></span>
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><circle cx="6" cy="4" r="2"/><circle cx="18" cy="20" r="2"/><circle cx="6" cy="20" r="2"/><path d="M6 6v12m0-7a6 6 0 0 0 6-6h4m2 2v11"/></svg></span>
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+          </div>
+          <div class="rail-bottom">
+            <button id="usage-trigger" class="usage-trigger" type="button" data-mode="circle" aria-expanded="false" aria-controls="usage-menu" aria-label="Weekly usage: 84% left" title="Weekly usage: 84% left">
+              <span id="ring" class="ring" aria-hidden="true"></span>
+              <span id="number-display" class="number-display" aria-hidden="true" hidden><span id="number-value">84%</span></span>
+            </button>
+            <span class="avatar" aria-label="Sample account">SA</span>
+          </div>
+        </aside>
+        <div class="app-panel">
+
+        <aside class="project-sidebar" aria-label="Example projects"><div class="project-header">Codex <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span class="project-tools" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span></div><div class="project-line" style="margin-top:14px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-7M15 4l5 5M9 15l11-11"/></svg><span>New chat</span></div><div class="project-label">Projects</div><div class="project-line"><svg class="project-blue" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Sample workspace</span></div><div class="project-line"><svg class="project-red" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Design project</span></div><div class="task-line">Review updates</div><div class="task-line">Plan next steps</div><div class="project-line"><svg class="project-purple" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Project planning</span></div><div class="task-line">Release checklist</div><div class="recents">Recents ›</div></aside>
+        <main class="workspace">
+          <div class="workspace-header"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Example conversation</span><span class="more" aria-hidden="true">···</span></div>
+          <div class="conversation"><div class="sample-message">Can you review the latest changes?</div><div class="sample-response">I reviewed the changes and noted a few points to check.</div></div>
+          <div class="composer" aria-hidden="true"><span>＋</span><span>Message Codex</span><span class="send">↑</span></div>
+        </main>
+        </div>
+
+        <section id="usage-menu" class="usage-menu" aria-label="Usage menu" hidden>
+          <div class="source">Usage source: <strong>Your plan</strong></div>
+          <div id="overview">
+            <div class="stat"><span>Weekly limit</span><span id="weekly-value">84% left</span></div>
+            <div class="stat"><span>Credits</span><span>0 credits</span></div>
+            <div class="reset-heading"><span>Usage resets</span><div class="reset-controls"><span id="reset-balance">1 available</span><button id="reset-action" class="reset-action" type="button" aria-label="Reset usage">Reset</button></div></div>
+            <div id="reset-result" class="inline-result" role="status" hidden></div>
+            <div class="display-heading"><span>Display</span><div class="segmented" role="group" aria-label="Usage indicator display"><button id="circle-mode" type="button" aria-label="Show circle" title="Show circle" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></button><button id="number-mode" type="button" aria-label="Show percentage" title="Show percentage" aria-pressed="false">%</button></div></div>
+            <button id="manage-usage" class="manage" type="button">Manage usage<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h6v6M19 5l-9 9"/><path d="M19 14v5H5V5h5"/></svg></button>
+          </div>
+          <div id="confirmation" hidden>
+            <h2 class="confirm-title">Use one reset?</h2>
+            <p class="confirm-copy">This uses 1 reset for eligible usage limits. Your updated allowance will appear after the reset.</p>
+            <div class="confirm-buttons"><button id="cancel-reset" type="button">Cancel</button><button id="confirm-reset" class="confirm" type="button">Use reset</button></div>
+          </div>
+          <div id="management" hidden>
+            <h2 class="confirm-title">Usage management</h2>
+            <p class="confirm-copy">Example view. Your plan details and usage settings would be available here.</p>
+            <div class="confirm-buttons"><button id="back-to-usage" type="button">Back to usage</button></div>
+          </div>
+        </section>
+      </div>
+    </section>
+    </div>
+    <div class="footnote"><span>Interactive concept</span><span>No account connection or real reset</span></div>
+  </div>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const trigger = $("usage-trigger");
+      const menu = $("usage-menu");
+      const viewport = document.querySelector(".app-viewport");
+      const range = $("remaining");
+      const availability = $("availability");
+      const result = $("reset-result");
+      let mode = "circle";
+      let pending = false;
+      let measureContext = null;
+      try { mode = localStorage.getItem("usage-indicator-display-v3") === "number" ? "number" : "circle"; } catch (_) {}
+      try {
+        measureContext = document.createElement("canvas").getContext("2d");
+        if (measureContext) measureContext.font = '400 100px "Segoe UI", system-ui, sans-serif';
+      } catch (_) {}
+
+      function fitPercentage(element, text) {
+        let size = text.length >= 4 ? 9.5 : text.length === 3 ? 12 : 17;
+        if (measureContext) {
+          const measured = measureContext.measureText(text).width;
+          if (Number.isFinite(measured) && measured > 0) size = Math.min(18, 2350 / measured);
+        }
+        element.style.fontSize = Math.floor(size * 100) / 100 + "px";
+      }
+
+      function render() {
+        const remaining = Number(range.value);
+        const balances = { available: "1 available", none: "None available", ineligible: "No eligible limit", unknown: "Unavailable" };
+        trigger.dataset.mode = mode;
+        $("remaining-output").textContent = `${remaining}%`;
+        $("weekly-value").textContent = `${remaining}% left`;
+        $("number-value").textContent = `${remaining}%`;
+        fitPercentage($("number-display"), `${remaining}%`);
+        $("ring").style.setProperty("--amount", `${remaining}%`);
+        $("ring").hidden = mode !== "circle";
+        $("number-display").hidden = mode !== "number";
+        $("circle-mode").setAttribute("aria-pressed", String(mode === "circle"));
+        $("number-mode").setAttribute("aria-pressed", String(mode === "number"));
+        const label = `Weekly usage: ${remaining}% left`;
+        trigger.setAttribute("aria-label", label);
+        trigger.title = label;
+        $("reset-balance").textContent = balances[availability.value];
+        $("reset-action").disabled = availability.value !== "available" || pending;
+      }
+
+      function showOverview() {
+        $("confirmation").hidden = true;
+        $("management").hidden = true;
+        $("overview").hidden = false;
+      }
+
+      function setMode(next) {
+        mode = next;
+        try { localStorage.setItem("usage-indicator-display-v3", next); } catch (_) {}
+        render();
+      }
+
+      trigger.addEventListener("click", () => {
+        menu.hidden = !menu.hidden;
+        trigger.setAttribute("aria-expanded", String(!menu.hidden));
+        if (!menu.hidden) showOverview();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !menu.hidden && !pending) {
+          menu.hidden = true;
+          trigger.setAttribute("aria-expanded", "false");
+          showOverview();
+          trigger.focus();
+        }
+      });
+      range.addEventListener("input", () => { result.hidden = true; render(); });
+      availability.addEventListener("change", () => { result.hidden = true; showOverview(); render(); });
+      $("circle-mode").addEventListener("click", () => setMode("circle"));
+      $("number-mode").addEventListener("click", () => setMode("number"));
+      $("manage-usage").addEventListener("click", () => {
+        $("overview").hidden = true;
+        $("management").hidden = false;
+        $("back-to-usage").focus();
+      });
+      $("back-to-usage").addEventListener("click", () => { showOverview(); $("manage-usage").focus(); });
+      $("reset-action").addEventListener("click", () => {
+        if (availability.value !== "available" || pending) return;
+        result.hidden = true;
+        $("overview").hidden = true;
+        $("confirmation").hidden = false;
+        $("cancel-reset").focus();
+      });
+      $("cancel-reset").addEventListener("click", () => { showOverview(); $("reset-action").focus(); });
+      $("confirm-reset").addEventListener("click", () => {
+        if (pending || availability.value !== "available") return;
+        pending = true;
+        $("confirm-reset").disabled = true;
+        $("cancel-reset").disabled = true;
+        range.disabled = true;
+        availability.disabled = true;
+        trigger.disabled = true;
+        $("confirm-reset").textContent = "Resetting...";
+        window.setTimeout(() => {
+          // These values represent a fictional service response, not a real redemption.
+          range.value = "100";
+          availability.value = "none";
+          pending = false;
+          $("confirm-reset").disabled = false;
+          $("cancel-reset").disabled = false;
+          range.disabled = false;
+          availability.disabled = false;
+          trigger.disabled = false;
+          $("confirm-reset").textContent = "Use reset";
+          result.textContent = "Example reset completed.";
+          result.hidden = false;
+          showOverview();
+          render();
+          trigger.focus();
+        }, 600);
+      });
+      function fitPreview() {
+        const width = viewport.clientWidth;
+        if (width > 0) viewport.style.setProperty("--preview-scale", String(width / 1280));
+      }
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(fitPreview);
+        observer.observe(viewport);
+      } else {
+        window.addEventListener("resize", fitPreview);
+      }
+      fitPreview();
+      render();
+    })();
+  </script>
+</body>
+</html>
