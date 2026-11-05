@@ -9,3 +9,5 @@ The [specification](usage-indicator-spec.md) describes the interaction and its s
 The original screenshots are not included. Project, conversation, and account labels in the mockup are fictional.
 
 Related requests: [#59247](https://github.com/openai/codex/issues/59247), [#25561](https://github.com/openai/codex/issues/25561), and [#48025](https://github.com/openai/codex/issues/48025).
+
+Upstream issue: [openai/codex#59764](https://github.com/openai/codex/issues/59764).

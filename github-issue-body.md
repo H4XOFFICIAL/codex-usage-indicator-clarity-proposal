@@ -23,6 +23,6 @@ The usage percentage should refer to a named plan-allowance window, not the conv
 
 ### Prototype and feedback
 
-I have prepared a sanitized interactive mockup using example values. It does not connect to an account or redeem a real reset. OpenAI's [Codex App Server documentation](https://learn.chatgpt.com/docs/app-server) describes earned-reset availability and redemption outcomes.
+I have prepared a [sanitized interactive mockup](https://h4xofficial.github.io/codex-usage-indicator-clarity-proposal/) using example values. It does not connect to an account or redeem a real reset. OpenAI's [Codex App Server documentation](https://learn.chatgpt.com/docs/app-server) describes earned-reset availability and redemption outcomes.
 
 Would OpenAI consider providing usage resets or credits in recognition of the time spent developing and testing this proposal?
